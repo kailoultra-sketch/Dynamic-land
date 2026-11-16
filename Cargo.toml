@@ -1,0 +1,65 @@
+[package]
+name = "dynamic_island"
+version = "0.1.0"
+edition = "2021"
+description = "Persistent Android Dynamic Island overlay application in Rust with 120 Hz spring physics, WindowInsets camera cutout alignment, OpenGL ES / Vulkan SDF rendering, NDK overlay window, and JNI system integrations."
+license = "MIT OR Apache-2.0"
+
+[lib]
+name = "dynamic_island"
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "dynamic_island_daemon"
+path = "src/main.rs"
+
+[dependencies]
+bitflags = "2.13.2"
+bytemuck = { version = "1.25.2", features = ["derive"] }
+libc = "0.2.190"
+log = "0.4.34"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+thiserror = "2.0.21"
+
+[package.metadata.android]
+package = "com.dynamicisland.overlay"
+apk_name = "DynamicIslandOverlay"
+target_sdk_version = 35
+min_sdk_version = 29
+fullscreen = false
+opengles_version_major = 3
+opengles_version_minor = 0
+
+[[package.metadata.android.uses_permission]]
+name = "android.permission.SYSTEM_ALERT_WINDOW"
+
+[[package.metadata.android.uses_permission]]
+name = "android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+
+[[package.metadata.android.uses_permission]]
+name = "android.permission.FOREGROUND_SERVICE"
+
+[[package.metadata.android.uses_permission]]
+name = "android.permission.FOREGROUND_SERVICE_SPECIAL_USE"
+
+[[package.metadata.android.uses_permission]]
+name = "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+
+[[package.metadata.android.uses_permission]]
+name = "android.permission.RECEIVE_BOOT_COMPLETED"
+
+[[package.metadata.android.uses_permission]]
+name = "android.permission.POST_NOTIFICATIONS"
+
+[[package.metadata.android.uses_permission]]
+name = "android.permission.BLUETOOTH_CONNECT"
+
+[[package.metadata.android.uses_feature]]
+name = "android.hardware.opengles.aep"
+required = false
+
+[[package.metadata.android.uses_feature]]
+name = "android.hardware.vulkan.version"
+required = false
+version = 0x00401000
