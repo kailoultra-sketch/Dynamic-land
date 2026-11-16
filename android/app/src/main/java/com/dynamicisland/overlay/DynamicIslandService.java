@@ -1,6 +1,5 @@
 package com.dynamicisland.overlay;
 
-import android.app.AppOpsManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -12,7 +11,9 @@ import android.content.IntentFilter;
 import android.content.res.Configuration;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
+import android.hardware.camera2.CameraManager;
 import android.media.AudioManager;
+import android.media.AudioRecordingConfiguration;
 import android.os.BatteryManager;
 import android.os.Build;
 import android.os.IBinder;
@@ -97,6 +98,28 @@ public final class DynamicIslandService extends Service implements Choreographer
         }
     };
 
+    private final AudioManager.AudioRecordingCallback audioRecordingCallback =
+        new AudioManager.AudioRecordingCallback() {
+            @Override
+            public void onRecordingConfigChanged(List<AudioRecordingConfiguration> configs) {
+                boolean micActive = configs != null && !configs.isEmpty();
+                nativeOnSystemEvent(5, micActive ? 1 : 0);
+            }
+        };
+
+    private final CameraManager.AvailabilityCallback cameraAvailabilityCallback =
+        new CameraManager.AvailabilityCallback() {
+            @Override
+            public void onCameraUnavailable(String cameraId) {
+                nativeOnSystemEvent(6, 1);
+            }
+
+            @Override
+            public void onCameraAvailable(String cameraId) {
+                nativeOnSystemEvent(6, 0);
+            }
+        };
+
     @Override
     public void onCreate() {
         super.onCreate();
@@ -118,6 +141,7 @@ public final class DynamicIslandService extends Service implements Choreographer
             nm.createNotificationChannel(channel);
         }
         Notification notification = new Notification.Builder(this, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.sym_def_app_icon)
             .setContentTitle("Dynamic Island")
             .setContentText("Persistent overlay active")
             .setOngoing(true)
@@ -201,21 +225,13 @@ public final class DynamicIslandService extends Service implements Choreographer
     }
 
     private void registerPrivacySensorListeners() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            AppOpsManager appOps = (AppOpsManager) getSystemService(Context.APP_OPS_SERVICE);
-            if (appOps != null) {
-                String[] ops = new String[] {
-                    AppOpsManager.OPSTR_RECORD_AUDIO,
-                    AppOpsManager.OPSTR_CAMERA
-                };
-                appOps.startWatchingActive(ops, getMainExecutor(), (op, uid, packageName, active) -> {
-                    if (AppOpsManager.OPSTR_RECORD_AUDIO.equals(op)) {
-                        nativeOnSystemEvent(5, active ? 1 : 0);
-                    } else if (AppOpsManager.OPSTR_CAMERA.equals(op)) {
-                        nativeOnSystemEvent(6, active ? 1 : 0);
-                    }
-                });
-            }
+        AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        if (audioManager != null) {
+            audioManager.registerAudioRecordingCallback(audioRecordingCallback, null);
+        }
+        CameraManager cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+        if (cameraManager != null) {
+            cameraManager.registerAvailabilityCallback(cameraAvailabilityCallback, null);
         }
     }
 
@@ -242,6 +258,14 @@ public final class DynamicIslandService extends Service implements Choreographer
     @Override
     public void onDestroy() {
         unregisterReceiver(systemReceiver);
+        AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        if (audioManager != null) {
+            audioManager.unregisterAudioRecordingCallback(audioRecordingCallback);
+        }
+        CameraManager cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+        if (cameraManager != null) {
+            cameraManager.unregisterAvailabilityCallback(cameraAvailabilityCallback);
+        }
         nativeDetachSurface();
         if (windowManager != null && overlayView != null) {
             windowManager.removeView(overlayView);
