@@ -77,16 +77,20 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
-      - name: Publish signed APK to apk-artifact branch for direct download
+      - name: Publish signed APK and NDK jniLibs to apk-artifact branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           APK_SRC="$(pwd)/android/app/build/outputs/apk/debug/app-debug.apk"
+          JNILIBS_SRC="$(pwd)/android/app/src/main/jniLibs"
           TMP_DIR=$(mktemp -d)
           cp "$APK_SRC" "$TMP_DIR/app-debug.apk"
+          cp -r "$JNILIBS_SRC" "$TMP_DIR/jniLibs"
           cd "$TMP_DIR"
           git init
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b apk-artifact
-          git add -f app-debug.apk
+          git add -f app-debug.apk jniLibs
           git commit -m "Publish signed app-debug.apk from run ${GITHUB_RUN_NUMBER}"
-          git push -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" apk-artifact
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" apk-artifact
